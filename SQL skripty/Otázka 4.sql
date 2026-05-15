@@ -2,36 +2,36 @@
 
 WITH wages AS (
     SELECT 
-        rok, 
-        prumerna_mzda AS wage
-    FROM "t_Rudolf_Preiss_project_SQL_primary_final" trppspf
-    WHERE odvetvi IS NULL
-    GROUP BY rok, prumerna_mzda
+        year, 
+        avg_wage AS avg_wages
+    FROM t_rudolf_preiss_project_sql_primary_final trppspf
+    WHERE industry_branch IS NULL
+    GROUP BY year, avg_wage
 ),
 prices AS (
     SELECT 
-        rok, 
-        AVG(prumerna_cena) AS avg_basket_price
+        year, 
+        AVG(avg_price) AS avg_prices
     FROM (
-        SELECT DISTINCT rok, kategorie_potravin, prumerna_cena 
-        FROM "t_Rudolf_Preiss_project_SQL_primary_final"
-    ) sub
-    GROUP BY rok
+        SELECT DISTINCT year, food_category, avg_price
+        FROM t_rudolf_preiss_project_sql_primary_final trppspf
+        )
+    GROUP BY year
 ),
-growth_comparison AS (
+growth AS (
     SELECT 
-        w.rok,
-        ((w.wage - LAG(w.wage) OVER (ORDER BY w.rok)) / LAG(w.wage) OVER (ORDER BY w.rok) * 100)::numeric AS wage_growth,
-        ((p.avg_basket_price - LAG(p.avg_basket_price) OVER (ORDER BY p.rok)) / LAG(p.avg_basket_price) OVER (ORDER BY p.rok) * 100)::numeric AS price_growth
+        w.year,
+        ((w.avg_wages - LAG(w.avg_wages) OVER (ORDER BY w.year)) / LAG(w.avg_wages) OVER (ORDER BY w.year) * 100)::numeric AS wage_growth,
+        ((p.avg_prices - LAG(p.avg_prices) OVER (ORDER BY p.year)) / LAG(p.avg_prices) OVER (ORDER BY p.year) * 100)::numeric AS price_growth
     FROM wages w
-    JOIN prices p ON w.rok = p.rok
+    JOIN prices p ON w.year = p.year
 )
 SELECT 
-    rok,
-    ROUND(wage_growth, 2) AS růst_mezd_v_procentech,
-    ROUND(price_growth, 2) AS růst_cen_potravin_v_procentech,
-    ROUND(price_growth - wage_growth, 2) AS rozdíl_v_procentech
-FROM growth_comparison
+    year,
+    ROUND(wage_growth, 2) AS wage_growth,
+    ROUND(price_growth, 2) AS price_growth,
+    ROUND(price_growth - wage_growth, 2) AS wages_prices_diff
+FROM growth
 WHERE wage_growth IS NOT NULL 
   AND price_growth IS NOT NULL
-ORDER BY rok;
+ORDER BY year;
