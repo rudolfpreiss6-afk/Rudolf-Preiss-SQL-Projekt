@@ -1,11 +1,11 @@
 --SQL dotaz který sjednocuje data o mzdách a cenách potravin 
 
-CREATE TABLE "t_Rudolf_Preiss_project_SQL_primary_final" AS
-WITH v_payroll AS (
+CREATE TABLE t_rudolf_preiss_project_SQL_primary_final AS
+WITH payroll AS (
 	SELECT 
-        cp.payroll_year AS rok,
-        cpib.name AS odvetvi,
-        ROUND(AVG(cp.value)) AS prumerna_mzda
+        cp.payroll_year AS payroll_year,
+        cpib.name AS industry_branch,
+        ROUND(AVG(cp.value)) AS avg_wage
     FROM czechia_payroll cp
     LEFT JOIN czechia_payroll_industry_branch  cpib 
         ON cp.industry_branch_code = cpib.code
@@ -14,24 +14,24 @@ WITH v_payroll AS (
       AND cp.value IS NOT NULL
     GROUP BY cp.payroll_year, cpib.name
 ),
-v_price AS (
+prices AS (
     SELECT 
-        EXTRACT(YEAR FROM cp.date_from) AS rok,
-        cpc.name AS kategorie_potravin,
-        AVG(cp.value) AS prumerna_cena,
-        cpc.price_unit AS jednotka
+        EXTRACT(YEAR FROM cp.date_from) AS prices_year,
+        cpc.name AS food_category,
+        AVG(cp.value) AS avg_price,
+        cpc.price_unit AS unit
     FROM czechia_price cp
     JOIN czechia_price_category cpc 
         ON cp.category_code = cpc.code
     WHERE cp.region_code IS NULL 
-    GROUP BY rok, cpc.name, cpc.price_unit
+    GROUP BY prices_year, cpc.name, cpc.price_unit
 )
 SELECT 
-    p.rok,
-    p.odvetvi,
-    p.prumerna_mzda,
-    pr.kategorie_potravin,
-    pr.prumerna_cena,
-    pr.jednotka
-FROM v_payroll p
-LEFT JOIN v_price pr ON p.rok = pr.rok;
+    p.payroll_year AS year,
+    p.industry_branch,
+    p.avg_wage,
+    pr.food_category,
+    pr.avg_price,
+    pr.unit 
+FROM payroll p
+INNER JOIN prices pr ON p.payroll_year = pr.prices_year;

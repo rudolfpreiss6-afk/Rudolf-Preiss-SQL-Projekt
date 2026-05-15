@@ -1,30 +1,32 @@
 -- Která kategorie potravin zdražuje nejpomaleji (je u ní nejnižší percentuální meziroční nárůst)?
 
+-- Která kategorie potravin zdražuje nejpomaleji (je u ní nejnižší percentuální meziroční nárůst)?
+
 WITH prices AS (
     SELECT DISTINCT
-        rok,
-        kategorie_potravin,
-        prumerna_cena
-    FROM "t_Rudolf_Preiss_project_SQL_primary_final" trppspf
-    WHERE prumerna_cena IS NOT NULL
+        year,
+        food_category,
+        avg_price
+    FROM t_rudolf_preiss_project_sql_primary_final trppspf
+    WHERE avg_price IS NOT NULL
 ),
 yoy_growth AS (
     SELECT
-        kategorie_potravin,
-        (((prumerna_cena - LAG(prumerna_cena) OVER (PARTITION BY kategorie_potravin ORDER BY rok)) / 
-        LAG(prumerna_cena) OVER (PARTITION BY kategorie_potravin ORDER BY rok)) *100)::numeric AS growth
+        food_category,
+        (((avg_price - LAG(avg_price) OVER (PARTITION BY food_category ORDER BY year )) / 
+        LAG(avg_price) OVER (PARTITION BY food_category ORDER BY year)) * 100)::numeric AS percentage_change
     FROM prices
 ),
 final AS (
     SELECT
-        kategorie_potravin AS potravina,
-        ROUND(AVG(growth), 2) AS průměrný_procentuální_růst
+        food_category,
+        ROUND(AVG(percentage_change), 2) AS percentage_change
     FROM yoy_growth
-    WHERE growth IS NOT NULL
-    GROUP BY kategorie_potravin
+    WHERE percentage_change IS NOT NULL
+    GROUP BY food_category 
 )
 SELECT *
 FROM final
-WHERE průměrný_procentuální_růst > 0 
-ORDER BY průměrný_procentuální_růst ASC
+WHERE percentage_change > 0 
+ORDER BY percentage_change ASC
 LIMIT 1;

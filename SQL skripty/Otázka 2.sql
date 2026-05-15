@@ -3,21 +3,20 @@
 
 WITH range_years AS (
     SELECT 
-        MIN(rok) AS first_year, 
-        MAX(rok) AS last_year 
-    FROM "t_Rudolf_Preiss_project_SQL_primary_final"
-    WHERE prumerna_cena IS NOT NULL
+        MIN(year) AS first_year, 
+        MAX(year) AS last_year 
+    FROM t_rudolf_preiss_project_sql_primary_final trppspf 
 )
 SELECT 
-    trppspf.rok,
-    trppspf.kategorie_potravin AS název_produktu,
-    ROUND(trppspf.prumerna_mzda) AS průměrná_mzda,
-    ROUND(trppspf.prumerna_cena) AS průměrná_cena_za_jednotku ,
-    FLOOR(trppspf.prumerna_mzda / trppspf.prumerna_cena) AS množství_jednotek_k_nákupu,
-    trppspf.jednotka
-FROM "t_Rudolf_Preiss_project_SQL_primary_final" trppspf
+    year,
+    food_category,
+    avg_wage,
+    ROUND(avg_price::numeric , 2) AS avg_price ,
+    FLOOR(avg_wage / avg_price) AS num_of_units_purchasable,
+    unit
+FROM t_rudolf_preiss_project_sql_primary_final trppspf 
 JOIN range_years ry 
-    ON trppspf.rok = ry.first_year OR trppspf.rok = ry.last_year
-WHERE trppspf.kategorie_potravin IN ('Chléb konzumní kmínový', 'Mléko polotučné pasterované')
-  AND trppspf.odvetvi IS NULL
-ORDER BY trppspf.rok ASC, trppspf.kategorie_potravin DESC;
+    ON trppspf.year = ry.first_year OR trppspf.year = ry.last_year
+WHERE food_category IN ('Chléb konzumní kmínový', 'Mléko polotučné pasterované')
+  AND industry_branch IS NULL
+ORDER BY year, food_category;

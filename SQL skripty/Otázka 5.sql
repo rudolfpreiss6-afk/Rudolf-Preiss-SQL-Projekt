@@ -1,55 +1,58 @@
--- 5. Má výška HDP vliv na změny ve mzdách a cenách potravin?
+-- Má výška HDP vliv na změny ve mzdách a cenách potravin?
 
-CREATE VIEW Otazka_5_vw AS
-WITH hdp AS (
+-- první skript
+
+CREATE VIEW question5_vw AS
+WITH gdp AS (
     SELECT 
-        year AS rok, 
+        year, 
         gdp,
-        ((gdp - LAG(gdp) OVER (ORDER BY year)) / LAG(gdp) OVER (ORDER BY year) * 100) AS rust_hdp
-    FROM "t_Rudolf_Preiss_project_SQL_secondary_final"
+        ((gdp - LAG(gdp) OVER (ORDER BY year)) / LAG(gdp) OVER (ORDER BY year) * 100) AS gdp_growth
+    FROM t_rudolf_preiss_project_sql_secondary_final trppssf 
     WHERE country = 'Czech Republic'
 ),
-mzdy AS (
+wages AS (
     SELECT 
-        rok, 
-        prumerna_mzda,
-        ((prumerna_mzda - LAG(prumerna_mzda) OVER (ORDER BY rok)) / LAG(prumerna_mzda) OVER (ORDER BY rok) * 100) AS rust_mezd
-    FROM "t_Rudolf_Preiss_project_SQL_primary_final"
-    WHERE odvetvi IS NULL
-    GROUP BY rok, prumerna_mzda
+        year, 
+        avg_wage,
+        ((avg_wage - LAG(avg_wage) OVER (ORDER BY year)) / LAG(avg_wage) OVER (ORDER BY year) * 100) AS wage_growth
+    FROM t_rudolf_preiss_project_sql_primary_final trppspf 
+    WHERE industry_branch IS NULL
+    GROUP BY year, avg_wage
 ),
-ceny AS (
+prices AS (
     SELECT 
-        rok, 
-        AVG(prumerna_cena) AS avg_price
-    FROM (SELECT DISTINCT rok, kategorie_potravin, prumerna_cena FROM "t_Rudolf_Preiss_project_SQL_primary_final") sub
-    GROUP BY rok
+        year, 
+        AVG(avg_price) AS avg_price
+    FROM (SELECT DISTINCT year, food_category, avg_price FROM t_rudolf_preiss_project_sql_primary_final trppspf )
+    GROUP BY year
 ),
-ceny_rust AS (
+prices_growth AS (
     SELECT 
-        rok,
-        ((avg_price - LAG(avg_price) OVER (ORDER BY rok)) / LAG(avg_price) OVER (ORDER BY rok) * 100) AS rust_cen
-    FROM ceny
+        year,
+        ((avg_price - LAG(avg_price) OVER (ORDER BY year)) / LAG(avg_price) OVER (ORDER BY year) * 100) AS price_growth
+    FROM prices
 )
 SELECT 
-    h.rok,
-    ROUND(h.rust_hdp::numeric, 2) AS růst_hdp,
-    ROUND(m.rust_mezd::numeric, 2) AS růst_mezd,
-    ROUND(c.rust_cen::numeric, 2) AS růst_cen,
-    ROUND(LEAD(m.rust_mezd) OVER (ORDER BY h.rok)::numeric, 2) AS růst_mezd_následující_rok,
-    ROUND(LEAD(c.rust_cen) OVER (ORDER BY h.rok)::numeric, 2) AS růst_cen_následující_rok
-FROM hdp h
-LEFT JOIN mzdy m ON h.rok = m.rok
-LEFT JOIN ceny_rust c ON h.rok = c.rok
-WHERE h.rok BETWEEN 2001 AND 2020
-ORDER BY h.rok;
+    g.year,
+    ROUND(g.gdp_growth::numeric, 2) AS gdp_growth,
+    ROUND(w.wage_growth::numeric, 2) AS wage_growth,
+    ROUND(p.price_growth::numeric, 2) AS price_growth,
+    ROUND(LEAD(w.wage_growth) OVER (ORDER BY g.year)::numeric, 2) AS wage_growth_next_year,
+    ROUND(LEAD(p.price_growth) OVER (ORDER BY g.year)::numeric, 2) AS price_growth_next_year
+FROM gdp g
+JOIN wages w ON g.year = w.year
+JOIN prices_growth p ON g.year = p.year
+WHERE gdp_growth IS NOT NULL
+ORDER BY g.year;
 
 
--- druhá část (korelace)
+-- druhý skript (korelace)
 
 SELECT
-	ROUND(CORR(růst_hdp, růst_mezd)::numeric, 4) AS korelace_hdp_mzdy,
-    ROUND(CORR(ov.růst_hdp, růst_cen)::numeric, 4) AS korelace_hdp_ceny,
-	ROUND(CORR(růst_hdp, růst_mezd_následující_rok)::numeric, 4) AS zpožděná_korelace_hdp_mzdy,
-    ROUND(CORR(ov.růst_hdp, růst_cen_následující_rok)::numeric, 4) AS zpožděná_korelace_hdp_ceny
- FROM otazka_5_vw ov;
+	ROUND(CORR(gdp_growth, wage_growth)::numeric, 4) AS corr_gdp_wage,
+    ROUND(CORR(gdp_growth, price_growth)::numeric, 4) AS corr_gdp_price,
+	ROUND(CORR(gdp_growth, wage_growth_next_year)::numeric, 4) AS lagged_corr_gdp_wage,
+    ROUND(CORR(gdp_growth, price_growth_next_year)::numeric, 4) AS lagged_corr_gdp_price
+ FROM question5_vw qv;
+````
